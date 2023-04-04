@@ -19,6 +19,7 @@ API_ID = os.environ.get("API_ID", None)
 API_HASH = os.environ.get("API_HASH", None) 
 TOKEN = os.environ.get("TOKEN", None) 
 SD_URL = os.environ.get("SD_URL", None) 
+USER_IDS = os.environ.get("USER_IDS", "*") 
 
 app = Client(
     "stable",
@@ -26,6 +27,8 @@ app = Client(
     api_hash=API_HASH,
     bot_token=TOKEN
 )
+
+user_ids = ser_ids = USER_IDS.split(',')
 
 # create API client
 api = webuiapi.WebUIApi()
@@ -41,6 +44,17 @@ api = webuiapi.WebUIApi(host='127.0.0.1', port=7861, sampler='DPM++ SDE Karras',
 
 # optionally set username, password when --api-auth is set on webui.
 #api.set_auth('username', 'password')
+
+def is_allowed(message) -> bool:
+    if USER_IDS == '*':
+        return True
+    print(message.from_user.id)
+    if str(message.from_user.id) in user_ids:
+        print("allow!")
+        return True
+    print("not allow!")
+    return False
+
 
 def byteBufferOfImage(img, mode):
     img_buffer = BytesIO()
@@ -120,17 +134,28 @@ buttons2 = [
     InlineKeyboardButton("娜扎", callback_data=" <lora:guninazha:0.8>"),
 ]
 buttons3 = [
+    InlineKeyboardButton("刘诗诗", callback_data="<lora:lss_V1:0.8>"),
+    InlineKeyboardButton("赵露诗", callback_data="<lora:rosyZhao_rosyZhao:0.8>"),
+    InlineKeyboardButton("刘亦菲2", callback_data="<lora:crystalLiuLiYFI_crystalLiu:0.8>"),
+    InlineKeyboardButton("刘亦菲3", callback_data="<lora:airyGirl_v10:0.8>"),
+    InlineKeyboardButton("热巴", callback_data="<lora:dilrabaDilmurat_v1:0.8>"),
 ]
 
 
-keyboard = InlineKeyboardMarkup([buttons1, buttons2])
+keyboard = InlineKeyboardMarkup([buttons1, buttons2, buttons3])
 
 @app.on_message(filters.command(["draw"]))
 def draw(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
     message.reply_text("Please choose a prompt:", reply_markup=keyboard)
 
 @app.on_message(filters.command(["start"], prefixes=["/", "!"]))
 async def start(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
     Photo = "https://media.discordapp.net/attachments/1028156834944655380/1062018608022171788/3aac7aaf-0065-40aa-9e4d-430c717b3d87.jpg"
 
     buttons = [[
@@ -172,7 +197,7 @@ def dress_api(photo, mask, strength, inp_fill):
     if mask is not None:
         print("mask exist")
         #prompt_positive = r'(8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), best quality, , (KPOP:1),1girl,nsfw,(absolutely naked,large breast,nipples,pussy,pubic hair),slim waist,very short hair, smooth skin, topless, bottomless,(high nipples:1.4), <lora:nudify:1>'
-        prompt_positive = r'(realistic, photo-realistic:1.37), large breasts, best quality, 1girl, topless, bottomless, nsfw, fully naked, short hair, pussy, smooth skin, <lora:nudify:1>'
+        prompt_positive = r'(realistic, photo-realistic:1.37), large breasts, best quality, 1girl, topless, bottomless, nsfw, fully naked, short hair, pussy, real human skin, <lora:nudify:1>'
     else:
         print("mask is none")
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="247,200,166" sketch_alpha=50.0]dress[/txt2mask]best quality,(realistic),nsfw,1girl,solo,((large breasts)),nude,topless,cleavage,navel'
@@ -180,12 +205,15 @@ def dress_api(photo, mask, strength, inp_fill):
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0]dress[/txt2mask] pink dress'
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0]dress[/txt2mask] best quality,(realistic),nsfw,1girl,solo,((large breasts)),nude,topless,cleavage,navel'
     print(prompt_positive)
-    return api.img2img(images=[photo], prompt=prompt_positive,negative_prompt=prompt_negative, cfg_scale=7, batch_size=2, denoising_strength=strength, inpainting_fill=inp_fill, mask_image=mask)
+    return api.img2img(images=[photo], prompt=prompt_positive,negative_prompt=prompt_negative, cfg_scale=7, batch_size=2, denoising_strength=strength, inpainting_fill=inp_fill, mask_image=mask, steps=15)
 
 @app.on_message(filters.photo)
 #@app.on_message(filters.photo & filters.regex("dress"))
 #@app.on_message(filters.command(["img2img"], prefixes="/") & filters.photo)
 async def img2img(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
     if message.photo:
         print("Message contains one photo.")
         photo_path = await client.download_media(message.photo.file_id)
