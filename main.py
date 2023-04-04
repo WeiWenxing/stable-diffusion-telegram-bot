@@ -145,7 +145,8 @@ async def start(client, message):
         f"Hello! I'm botname Ai and I can make an anime-styled picture!\n\n/generate - Reply to Image\n/draw text to anime image\n\nPowered by @aipicfree",
         reply_markup=InlineKeyboardMarkup(buttons))
 
-prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
+#prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
+prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, (ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
 
 def get_mask(photo, txt, color, alpha, precision):
     prompt_positive = f'[txt2mask mode="add" show precision={precision} padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha={alpha}]{txt}[/txt2mask]'
@@ -153,7 +154,7 @@ def get_mask(photo, txt, color, alpha, precision):
     return result
 
 def body_mask(photo):
-    prompt_positive = r'[txt2mask mode="add" show precision=70.0 padding=8.0 smoothing=80.0 negative_mask="face|arms|hands" neg_precision=80.0 neg_padding=8.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants[/txt2mask]'
+    prompt_positive = r'[txt2mask mode="add" show precision=70.0 padding=8.0 smoothing=80.0 negative_mask="face" neg_precision=80.0 neg_padding=8.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants[/txt2mask]'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
     for img_mask in result.images:
         if img_mask.mode == "RGBA":
@@ -171,7 +172,7 @@ def dress_api(photo, mask, strength, inp_fill):
     if mask is not None:
         print("mask exist")
         #prompt_positive = r'(8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), best quality, , (KPOP:1),1girl,nsfw,(absolutely naked,large breast,nipples,pussy,pubic hair),slim waist,very short hair, smooth skin, topless, bottomless,(high nipples:1.4), <lora:nudify:1>'
-        prompt_positive = r'smooth skin, large breasts, best quality, 1girl, topless, bottomless, nsfw, fully naked, short hair, pussy, <lora:nudify:1>'
+        prompt_positive = r'(realistic, photo-realistic:1.37), large breasts, best quality, 1girl, topless, bottomless, nsfw, fully naked, short hair, pussy, smooth skin, <lora:nudify:1>'
     else:
         print("mask is none")
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="247,200,166" sketch_alpha=50.0]dress[/txt2mask]best quality,(realistic),nsfw,1girl,solo,((large breasts)),nude,topless,cleavage,navel'
@@ -185,8 +186,6 @@ def dress_api(photo, mask, strength, inp_fill):
 #@app.on_message(filters.photo & filters.regex("dress"))
 #@app.on_message(filters.command(["img2img"], prefixes="/") & filters.photo)
 async def img2img(client, message):
-    # 获取用户上传的图片
-    print(message)
     if message.photo:
         print("Message contains one photo.")
         photo_path = await client.download_media(message.photo.file_id)
