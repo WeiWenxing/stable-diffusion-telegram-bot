@@ -9,8 +9,11 @@ from PIL import Image, PngImagePlugin
 import base64
 from io import BytesIO
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+import numpy as np
 
 import webuiapi
+
+from scipy import stats
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -45,6 +48,34 @@ api = webuiapi.WebUIApi(host='0.0.0.0', port=7861, sampler='DPM++ SDE Karras', s
 # optionally set username, password when --api-auth is set on webui.
 #api.set_auth('username', 'password')
 
+def get_skin_rgb(image, mask):
+    mask = np.array(mask)
+    image = np.array(image)
+
+    skin_pixels = image[np.nonzero(mask)].reshape(-1,3)
+    print("=====skin_pixels==========")
+    print(skin_pixels)
+
+    n_skin_pixels = skin_pixels.shape[0]
+    print(f"=====skins:{n_skin_pixels}==========")
+    if n_skin_pixels == 0:
+        return "229,205,197"
+    else:
+        r = skin_pixels[:,0]
+        print(r)
+        g = skin_pixels[:,1]
+        print(g)
+        b = skin_pixels[:,2]
+        print(b)
+
+        final_r = stats.mode(r)[0][0]
+        final_g = stats.mode(g)[0][0]
+        final_b = stats.mode(b)[0][0]
+
+        result = f'{final_r},{final_g},{final_b}'
+        print(result)
+        return result
+
 def is_allowed(message) -> bool:
     if USER_IDS == '*':
         return True
@@ -65,7 +96,6 @@ def byteBufferOfImage(img, mode):
 def saveImage(image: Image, fileName): 
     image.save(f'{fileName}.jpg', 'JPEG', quality=90)
     return f'{fileName}.jpg'
-
 
 def fileName(pre):
     chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -190,15 +220,6 @@ def model(client, message):
     models = api.util_get_model_names()
     print(models)
 
-    # set model (use exact name)
-    #api.util_set_model(models[0])
-
-    # set model (find closest match)
-    #api.util_set_model('robodiffusion')
-
-    # wait for job complete
-    #api.util_wait_for_ready()
-
     message.reply_text("Please choose a models:", reply_markup=models_board)
 
 @app.on_message(filters.command(["start"], prefixes=["/", "!"]))
@@ -235,6 +256,14 @@ def get_mask(photo, txt, color, alpha, precision, replace):
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
+def skin_mask(photo):
+    prompt_positive = r'[txt2mask mode="discard" show precision=100.0 padding=0.0 smoothing=20.0]skin|face[/txt2mask]'
+    result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
+    for img_mask in result.images:
+        if img_mask.mode == "RGBA":
+            return img_mask
+    return None
+
 def body_mask(photo):
     prompt_positive = r'[txt2mask mode="add" show precision=65.0 padding=0.0 smoothing=20.0 negative_mask="face" neg_precision=80.0 neg_padding=0.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants|underwear|bra[/txt2mask]'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
@@ -243,8 +272,8 @@ def body_mask(photo):
             return img_mask
     return None
 
-def get_dress_mask(photo):
-    prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|bare legs" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="229,205,197" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
+def get_dress_mask(photo, color):
+    prompt_positive = f'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|bare legs" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
@@ -279,14 +308,21 @@ async def img2img(client, message):
             file_bytes = f.read()
         img_ori = Image.open(BytesIO(file_bytes))
 
+        #get skin rgb
+        mask_skin = skin_mask(img_ori).convert('RGB')
+        await message.reply_photo(byteBufferOfImage(mask_skin, 'JPEG'))
+        rgb_values = get_skin_rgb(img_ori, mask_skin)
+        print(rgb_values)
+
         mask_body = body_mask(img_ori)
 
-        result = see_through(img_ori, "229,205,197")
+        #result = see_through(img_ori, "229,205,197")
+        result = see_through(img_ori, rgb_values)
         print("=============================see===============================")
         await message.reply_photo(byteBufferOfImage(result.image, 'JPEG'))
         img_ori = result.image
 
-        result = get_dress_mask(img_ori)
+        result = get_dress_mask(img_ori, rgb_values)
         print("=============================mask===============================")
         for img_mask in result.images:
             if img_mask.mode == "RGBA":
