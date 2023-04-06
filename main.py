@@ -112,11 +112,29 @@ def button_callback(bot, update, message, button):
     message.edit_text(text=f'Format: /draw {button.callback_data}')
     return True
 
-@app.on_callback_query()
+@app.on_callback_query(filters.regex("GuoFeng|chill|Basil"))
+def change_model(client, callback_query):
+    msg = callback_query.data
+    print(msg)
+
+    # 获取原始消息对象
+    message = callback_query.message
+    K = message.reply_text("Please Wait 1-2 Minutes")
+
+    # set model (find closest match)
+    api.util_set_model(f'{msg}')
+
+    # wait for job complete
+    api.util_wait_for_ready()
+
+    K.delete()
+
+@app.on_callback_query(filters.regex("solo|lora"))
 def handle_callback(client, callback_query):
     msg = callback_query.data
     # 获取原始消息对象
     message = callback_query.message
+    print(msg)
     txt2Image(msg, client, message)
 
 buttons1 = [
@@ -144,6 +162,14 @@ buttons3 = [
 
 keyboard = InlineKeyboardMarkup([buttons1, buttons2, buttons3])
 
+model_btns = [
+    InlineKeyboardButton("GF2", callback_data="GuoFeng2"),
+    InlineKeyboardButton("GF3.2", callback_data="GuoFeng3.2"),
+    InlineKeyboardButton("chill", callback_data="chilloutmix_NiPrunedFp32Fix"),
+    InlineKeyboardButton("Basil", callback_data="Basil_mix_fixed"),
+]
+models_board = InlineKeyboardMarkup([model_btns])
+
 @app.on_message(filters.command(["draw"]))
 def draw(client, message):
     if (not is_allowed(message)):
@@ -151,12 +177,29 @@ def draw(client, message):
         return
     message.reply_text("Please choose a prompt:", reply_markup=keyboard)
 
-@app.on_message(filters.command(["models"]))
-def draw(client, message):
+@app.on_message(filters.command(["model"]))
+def model(client, message):
     if (not is_allowed(message)):
         message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
         return
-    message.reply_text("Please choose a models:", reply_markup=keyboard)
+    # save current model name
+    old_model = api.util_get_current_model()
+    print(old_model)
+
+    # get list of available models
+    models = api.util_get_model_names()
+    print(models)
+
+    # set model (use exact name)
+    #api.util_set_model(models[0])
+
+    # set model (find closest match)
+    #api.util_set_model('robodiffusion')
+
+    # wait for job complete
+    #api.util_wait_for_ready()
+
+    message.reply_text("Please choose a models:", reply_markup=models_board)
 
 @app.on_message(filters.command(["start"], prefixes=["/", "!"]))
 async def start(client, message):
@@ -174,7 +217,7 @@ async def start(client, message):
     await message.reply_photo(
         photo=Photo,
         caption=
-        f"Hello! I'm botname Ai and I can make an anime-styled picture!\n\n/generate - Reply to Image\n/draw text to anime image\n\nPowered by @aipicfree",
+        f"Hello! I'm botname Ai and I can make an anime-styled picture!\n\n/model - change model\n/draw text to anime image\n\nPowered by @aipicfree",
         reply_markup=InlineKeyboardMarkup(buttons))
 
 #prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
