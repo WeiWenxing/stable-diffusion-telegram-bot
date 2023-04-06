@@ -74,6 +74,8 @@ def get_skin_rgb(image, mask):
 
         result = f'{final_r},{final_g},{final_b}'
         print(result)
+        if final_r < 180 or final_g < 150 or final_b < 130:
+            result = "229,205,197"
         return result
 
 def is_allowed(message) -> bool:
@@ -257,7 +259,7 @@ def get_mask(photo, txt, color, alpha, precision, replace):
     return result
 
 def skin_mask(photo):
-    prompt_positive = r'[txt2mask mode="discard" show precision=100.0 padding=0.0 smoothing=20.0]skin|face[/txt2mask]'
+    prompt_positive = r'[txt2mask mode="discard" show precision=100.0 padding=0.0 smoothing=20.0]face[/txt2mask]'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
     for img_mask in result.images:
         if img_mask.mode == "RGBA":
