@@ -34,7 +34,7 @@ user_ids = ser_ids = USER_IDS.split(',')
 api = webuiapi.WebUIApi()
 
 # create API client with custom host, port
-api = webuiapi.WebUIApi(host='127.0.0.1', port=7861, sampler='DPM++ SDE Karras', steps=10)
+api = webuiapi.WebUIApi(host='0.0.0.0', port=7861, sampler='DPM++ SDE Karras', steps=10)
 
 # create API client with custom host, port and https
 #api = webuiapi.WebUIApi(host='webui.example.com', port=443, use_https=True)
@@ -171,7 +171,7 @@ async def start(client, message):
         reply_markup=InlineKeyboardMarkup(buttons))
 
 #prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
-prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, (ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
+prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, tattoo, body painting, age spot, (ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
 
 def get_mask(photo, txt, color, alpha, precision):
     prompt_positive = f'[txt2mask mode="add" show precision={precision} padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha={alpha}]{txt}[/txt2mask]'
@@ -179,7 +179,7 @@ def get_mask(photo, txt, color, alpha, precision):
     return result
 
 def body_mask(photo):
-    prompt_positive = r'[txt2mask mode="add" show precision=70.0 padding=8.0 smoothing=80.0 negative_mask="face" neg_precision=80.0 neg_padding=8.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants[/txt2mask]'
+    prompt_positive = r'[txt2mask mode="add" show precision=65.0 padding=0.0 smoothing=20.0 negative_mask="face" neg_precision=80.0 neg_padding=0.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants[/txt2mask]'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
     for img_mask in result.images:
         if img_mask.mode == "RGBA":
@@ -187,17 +187,17 @@ def body_mask(photo):
     return None
 
 def get_dress_mask(photo):
-    prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="229,205,197" sketch_alpha=180.0]dress|shorts[/txt2mask] untied bikini,<lora:nudify:1>'
+    prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|arms" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="229,205,197" sketch_alpha=200.0]dress|skirts|pants[/txt2mask] untied bikini,<lora:nudify:1>'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
-def dress_api(photo, mask, strength, inp_fill):
+def dress_api(photo, mask, strength, inp_fill, count):
     print(mask)
     print(f'strength={strength}, inp_fill={inp_fill}')
     if mask is not None:
         print("mask exist")
-        #prompt_positive = r'(8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), best quality, , (KPOP:1),1girl,nsfw,(absolutely naked,large breast,nipples,pussy,pubic hair),slim waist,very short hair, smooth skin, topless, bottomless,(high nipples:1.4), <lora:nudify:1>'
-        prompt_positive = r'(realistic, photo-realistic:1.37), large breasts, best quality, 1girl, topless, bottomless, nsfw, fully naked, short hair, pussy, real human skin, <lora:nudify:1>'
+        prompt_positive = r'(8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), (perfect female figure:1.4), silm waist, (nude:1.4) 1girl, nsfw,(smooth shin skin:1.3), (large breast, high nipples:1.4), pussy,very short hair, topless, bottomless, <lora:nudify:1>'
+        #prompt_positive = r'(realistic, photo-realistic:1.37), absolutely naked, full nude, large breasts, slim waist, best quality, 1girl, topless, bottomless, nsfw, (very short hair:1.2), smooth shin skin, <lora:nudify:1>'
     else:
         print("mask is none")
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="247,200,166" sketch_alpha=50.0]dress[/txt2mask]best quality,(realistic),nsfw,1girl,solo,((large breasts)),nude,topless,cleavage,navel'
@@ -205,7 +205,7 @@ def dress_api(photo, mask, strength, inp_fill):
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0]dress[/txt2mask] pink dress'
         prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0]dress[/txt2mask] best quality,(realistic),nsfw,1girl,solo,((large breasts)),nude,topless,cleavage,navel'
     print(prompt_positive)
-    return api.img2img(images=[photo], prompt=prompt_positive,negative_prompt=prompt_negative, cfg_scale=7, batch_size=2, denoising_strength=strength, inpainting_fill=inp_fill, mask_image=mask, steps=15)
+    return api.img2img(images=[photo], prompt=prompt_positive,negative_prompt=prompt_negative, cfg_scale=7, batch_size=count, denoising_strength=strength, inpainting_fill=inp_fill, mask_image=mask, steps=15)
 
 @app.on_message(filters.photo)
 #@app.on_message(filters.photo & filters.regex("dress"))
@@ -234,18 +234,23 @@ async def img2img(client, message):
         img = result.image
         denoising_strength = 0.4
         inp_fill = 1
-        for i in range(2):
-            result = dress_api(img, mask, denoising_strength, inp_fill)
-            #inp_fill = i % 2
+        for i in range(1):
+            result = dress_api(img, mask, denoising_strength, inp_fill, 1)
             print(f"=============================result:{i}===============================")
-            denoising_strength = 0.5
             for image in result.images:
-                img = image
-                await message.reply_photo(byteBufferOfImage(img, 'JPEG'))
-                result_body = dress_api(img, mask_body, 0.4, 1)
-                print("=============================result:last==============================")
-                img = result_body.image
-                await message.reply_photo(byteBufferOfImage(img, 'JPEG'))
+                img = image # img as the next range
+                #output fill in origin
+                await message.reply_photo(byteBufferOfImage(image, 'JPEG')) 
+
+                #output body mask, fill in  origin
+                result_body = dress_api(image, mask_body, 0.45, 1, 3)
+                await message.reply_photo(byteBufferOfImage(result_body.image, 'JPEG'))
+                await message.reply_photo(byteBufferOfImage(result_body.images[1], 'JPEG'))
+                await message.reply_photo(byteBufferOfImage(result_body.images[2], 'JPEG'))
+
+                #img = result_body.image
+
+            denoising_strength += 0.1
     else:
         num_photos = len(message.photo)
         print(f"Message contains {num_photos} photos.")
