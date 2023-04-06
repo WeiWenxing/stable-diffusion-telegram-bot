@@ -151,6 +151,13 @@ def draw(client, message):
         return
     message.reply_text("Please choose a prompt:", reply_markup=keyboard)
 
+@app.on_message(filters.command(["models"]))
+def draw(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
+    message.reply_text("Please choose a models:", reply_markup=keyboard)
+
 @app.on_message(filters.command(["start"], prefixes=["/", "!"]))
 async def start(client, message):
     if (not is_allowed(message)):
@@ -173,13 +180,20 @@ async def start(client, message):
 #prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
 prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, tattoo, body painting, age spot, (ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
 
-def get_mask(photo, txt, color, alpha, precision):
-    prompt_positive = f'[txt2mask mode="add" show precision={precision} padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha={alpha}]{txt}[/txt2mask]'
+def see_through(photo, color):
+    prompt_positive = f'[txt2mask mode="add" precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=80.0]dress|bra|underwear[/txt2mask](8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), fmasterpiecel, 1girl, extremely delicate facial, perfect female figure, ({color} strapless dress:1.6), see-through,leotard, smooth fair skin, bare shoulders, bare arms, clavicle, large breasts, cleavage, slim waist, bare waist, bare legs, very short hair, an extremely delicate and beautiful, extremely detailed,intricate,'
+    print(prompt_positive)
+    result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.4, inpainting_fill=1)
+    return result
+
+def get_mask(photo, txt, color, alpha, precision, replace):
+    prompt_positive = f'[txt2mask mode="add" show precision={precision} padding=4.0 smoothing=20.0 negative_mask="face|arms|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha={alpha}]{txt}[/txt2mask]see-through'
+    print(prompt_positive)
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
 def body_mask(photo):
-    prompt_positive = r'[txt2mask mode="add" show precision=65.0 padding=0.0 smoothing=20.0 negative_mask="face" neg_precision=80.0 neg_padding=0.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants[/txt2mask]'
+    prompt_positive = r'[txt2mask mode="add" show precision=65.0 padding=0.0 smoothing=20.0 negative_mask="face" neg_precision=80.0 neg_padding=0.0 neg_smoothing=20.0]dress|skirt|shorts|shirt|pants|underwear|bra[/txt2mask]'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
     for img_mask in result.images:
         if img_mask.mode == "RGBA":
@@ -187,7 +201,7 @@ def body_mask(photo):
     return None
 
 def get_dress_mask(photo):
-    prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|arms" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="229,205,197" sketch_alpha=200.0]dress|skirts|pants[/txt2mask] untied bikini,<lora:nudify:1>'
+    prompt_positive = r'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|bare legs" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="229,205,197" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
@@ -223,6 +237,12 @@ async def img2img(client, message):
         img_ori = Image.open(BytesIO(file_bytes))
 
         mask_body = body_mask(img_ori)
+
+        result = see_through(img_ori, "229,205,197")
+        print("=============================see===============================")
+        await message.reply_photo(byteBufferOfImage(result.image, 'JPEG'))
+        img_ori = result.image
+
         result = get_dress_mask(img_ori)
         print("=============================mask===============================")
         for img_mask in result.images:
