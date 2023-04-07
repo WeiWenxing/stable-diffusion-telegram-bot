@@ -249,7 +249,7 @@ prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowr
 def see_through(photo, color):
     prompt_positive = f'[txt2mask mode="add" precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=80.0]dress|bra|underwear[/txt2mask](8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), fmasterpiecel, 1girl, extremely delicate facial, perfect female figure, ({color} strapless dress:1.6), see-through,leotard, smooth fair skin, bare shoulders, bare arms, clavicle, large breasts, cleavage, slim waist, bare waist, bare legs, very short hair, an extremely delicate and beautiful, extremely detailed,intricate,'
     print(prompt_positive)
-    result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.4, inpainting_fill=1)
+    result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.45, inpainting_fill=1)
     return result
 
 def get_mask(photo, txt, color, alpha, precision, replace):
@@ -259,7 +259,7 @@ def get_mask(photo, txt, color, alpha, precision, replace):
     return result
 
 def skin_mask(photo):
-    prompt_positive = r'[txt2mask mode="discard" show precision=100.0 padding=0.0 smoothing=20.0]face[/txt2mask]'
+    prompt_positive = r'[txt2mask mode="discard" show precision=100.0 padding=0.0 smoothing=20.0]face|skin[/txt2mask]'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.0, inpainting_fill=1)
     for img_mask in result.images:
         if img_mask.mode == "RGBA":
@@ -275,7 +275,7 @@ def body_mask(photo):
     return None
 
 def get_dress_mask(photo, color):
-    prompt_positive = f'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|bare legs" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
+    prompt_positive = f'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
@@ -310,15 +310,17 @@ async def img2img(client, message):
             file_bytes = f.read()
         img_ori = Image.open(BytesIO(file_bytes))
 
+        '''
         #get skin rgb
         mask_skin = skin_mask(img_ori).convert('RGB')
-        await message.reply_photo(byteBufferOfImage(mask_skin, 'JPEG'))
+        #await message.reply_photo(byteBufferOfImage(mask_skin, 'JPEG'))
         rgb_values = get_skin_rgb(img_ori, mask_skin)
         print(rgb_values)
+        '''
 
         mask_body = body_mask(img_ori)
 
-        #result = see_through(img_ori, "229,205,197")
+        rgb_values = "229,205,197"
         result = see_through(img_ori, rgb_values)
         print("=============================see===============================")
         await message.reply_photo(byteBufferOfImage(result.image, 'JPEG'))
