@@ -115,12 +115,16 @@ def fileName(pre):
     word = f"{pre}-{gen1}{gen2}{gen3}{gen4}{gen5}{gen6}{gen7}{gen8}{gen9}{gen10}"
     return word
 
+#prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
+prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, tattoo, body painting, age spot, (ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
+dress_of_girl = '(nude:1.4)'
+
 def txt2Image(msg, client, message):
     try:
         name = msg.split(':')[1]
     except Exception as e:
         name = msg
-    prompt_pos = f'(beautiful face)), extremely delicate facial,(best quality),(extremely detailed cg 8k wallpaper),(arms behind back:1.2) ,fmasterpiecel, an extremely delicate and beautiful, extremely detailed,intricate,photorealistic. 1girl, hyper detailed, (nude:1.4), (large breasts:1.3), slim waist, long legs, high heels, long hair,light smile, outdoors, {msg}'
+    prompt_pos = f'(beautiful face)), extremely delicate facial,(best quality),(extremely detailed cg 8k wallpaper),(arms behind back:1.2) ,fmasterpiecel, an extremely delicate and beautiful, extremely detailed,intricate,photorealistic. 1girl, hyper detailed, {dress_of_girl}, (large breasts:1.3), slim waist, long legs, high heels, long hair,light smile, outdoors, {msg}'
     #prompt_pos = f'(beautiful face), extremely delicate facial,(best quality),(extremely detailed cg 8k wallpaper),arms behind back,fmasterpiecel, an extremely delicate and beautiful, extremely detailed,intricate,photorealistic. 1girl, hyper detailed, (nude body:1.6), full body, (large breasts:1.3), long silver hair, long legs, high heels, light smile,outdoors,{msg}' 
     #prompt_pos = msg
 
@@ -144,31 +148,7 @@ def button_callback(bot, update, message, button):
     message.edit_text(text=f'Format: /draw {button.callback_data}')
     return True
 
-@app.on_callback_query(filters.regex("GuoFeng|chill|Basil"))
-def change_model(client, callback_query):
-    msg = callback_query.data
-    print(msg)
-
-    # 获取原始消息对象
-    message = callback_query.message
-    K = message.reply_text("Please Wait 1-2 Minutes")
-
-    # set model (find closest match)
-    api.util_set_model(f'{msg}')
-
-    # wait for job complete
-    api.util_wait_for_ready()
-
-    K.delete()
-
-@app.on_callback_query(filters.regex("solo|lora"))
-def handle_callback(client, callback_query):
-    msg = callback_query.data
-    # 获取原始消息对象
-    message = callback_query.message
-    print(msg)
-    txt2Image(msg, client, message)
-
+########## for loras ###########
 buttons1 = [
     InlineKeyboardButton("Default", callback_data="solo"),
     InlineKeyboardButton("佟丽娅", callback_data="<lora:Liliya_v10:0.7>"),
@@ -181,7 +161,7 @@ buttons2 = [
     InlineKeyboardButton("鞠婧祎", callback_data="<lora:jJNgy_jJNgy:0.8>"),
     InlineKeyboardButton("杨幂", callback_data="<lora:mimi_V3:0.8>"),
     InlineKeyboardButton("宋祖儿", callback_data="<lora:songzuer-000018:0.8>"),
-    InlineKeyboardButton("娜扎", callback_data=" <lora:guninazha:0.8>"),
+    InlineKeyboardButton("娜扎", callback_data="guninazha, <lora:guninazha:0.8>"),
 ]
 buttons3 = [
     InlineKeyboardButton("刘诗诗", callback_data="<lora:lss_V1:0.8>"),
@@ -191,9 +171,26 @@ buttons3 = [
     InlineKeyboardButton("热巴", callback_data="<lora:dilrabaDilmurat_v1:0.8>"),
 ]
 
-
 keyboard = InlineKeyboardMarkup([buttons1, buttons2, buttons3])
 
+@app.on_callback_query(filters.regex("solo|lora") & (~filters.regex("mecha")))
+def handle_callback(client, callback_query):
+    msg = callback_query.data
+    # 获取原始消息对象
+    message = callback_query.message
+    print(msg)
+    txt2Image(msg, client, message)
+
+@app.on_message(filters.command(["draw"]))
+def draw(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
+    message.reply_text("Please choose a prompt:", reply_markup=keyboard)
+
+
+
+########## for checkpoints ###########
 model_btns = [
     InlineKeyboardButton("GF2", callback_data="GuoFeng2"),
     InlineKeyboardButton("GF3.2", callback_data="GuoFeng3.2"),
@@ -202,12 +199,21 @@ model_btns = [
 ]
 models_board = InlineKeyboardMarkup([model_btns])
 
-@app.on_message(filters.command(["draw"]))
-def draw(client, message):
-    if (not is_allowed(message)):
-        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
-        return
-    message.reply_text("Please choose a prompt:", reply_markup=keyboard)
+@app.on_callback_query(filters.regex("GuoFeng|chill|Basil"))
+def change_model(client, callback_query):
+    msg = callback_query.data
+    print(msg)
+
+    # 获取原始消息对象
+    message = callback_query.message
+    K = message.reply_text("Please Wait 1-2 Minutes")
+    # set model (find closest match)
+    api.util_set_model(f'{msg}')
+    # wait for job complete
+    api.util_wait_for_ready()
+
+    K.delete()
+
 
 @app.on_message(filters.command(["model"]))
 def model(client, message):
@@ -221,9 +227,34 @@ def model(client, message):
     # get list of available models
     models = api.util_get_model_names()
     print(models)
-
     message.reply_text("Please choose a models:", reply_markup=models_board)
 
+
+
+########## for models ###########
+dress_btns = [
+    InlineKeyboardButton("裙子", callback_data="dress"),
+    InlineKeyboardButton("果照", callback_data="(nude:1.4)"),
+    InlineKeyboardButton("机娘", callback_data="mecha musume, mechanical arms, <lora:aMechaMusumeA_arc:1.5>"),
+]
+dress_board = InlineKeyboardMarkup([dress_btns])
+
+@app.on_callback_query(filters.regex("dress|nude|mecha"))
+def handle_callback(client, callback_query):
+    global dress_of_girl
+    print(dress_of_girl)
+    dress_of_girl = callback_query.data
+    print(dress_of_girl)
+
+@app.on_message(filters.command(["dress"]))
+def change_dress(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
+    message.reply_text("Please choose a clothes:", reply_markup=dress_board)
+
+
+########## start ###########
 @app.on_message(filters.command(["start"], prefixes=["/", "!"]))
 async def start(client, message):
     if (not is_allowed(message)):
@@ -243,11 +274,9 @@ async def start(client, message):
         f"Hello! I'm botname Ai and I can make an anime-styled picture!\n\n/model - change model\n/draw text to anime image\n\nPowered by @aipicfree",
         reply_markup=InlineKeyboardMarkup(buttons))
 
-#prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, age spot, backlight,(ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
-prompt_negative = r'(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, tattoo, body painting, age spot, (ugly:1.331), (duplicate:1.331), (morbid:1.21), (mutilated:1.21), (tranny:1.331), deformed eyes, deformed lips, mutated hands, (poorly drawn hands:1.331), blurry, (bad anatomy:1.21), (bad proportions:1.331), three arms, extra limbs, extra legs, extra arms, extra hands, (more than 2 nipples:1.331), (missing arms:1.331), (extra legs:1.331), (fused fingers:1.61051), (too many fingers:1.61051), (unclear eyes:1.331), bad hands, missing fingers, extra digit, (futa:1.1), bad body, pubic hair, glans, easynegative, three feet, four feet, (bra:1.3)'
 
-def see_through(photo, color):
-    prompt_positive = f'[txt2mask mode="add" precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=80.0]dress|bra|underwear[/txt2mask](8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), fmasterpiecel, 1girl, extremely delicate facial, perfect female figure, ({color} strapless dress:1.6), see-through,leotard, smooth fair skin, bare shoulders, bare arms, clavicle, large breasts, cleavage, slim waist, bare waist, bare legs, very short hair, an extremely delicate and beautiful, extremely detailed,intricate,'
+def see_through(photo, color, alpha):
+    prompt_positive = f'[txt2mask mode="add" precision=100.0 padding=4.0 smoothing=20.0 negative_mask="face|hands" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha={alpha}]dress|bra|underwear[/txt2mask](8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), fmasterpiecel, 1girl, extremely delicate facial, perfect female figure, ({color} strapless dress:1.6), (see-through:1.6), nude, smooth fair skin, bare shoulders, bare arms, clavicle, large breasts, cleavage, slim waist, bare waist, bare legs, very short hair,leotard, an extremely delicate and beautiful, extremely detailed,intricate,'
     print(prompt_positive)
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.45, inpainting_fill=1)
     return result
@@ -275,7 +304,7 @@ def body_mask(photo):
     return None
 
 def get_dress_mask(photo, color):
-    prompt_positive = f'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
+    prompt_positive = f'[txt2mask mode="add" show precision=100.0 padding=0.0 smoothing=20.0 negative_mask="face|hands|mask" neg_precision=100.0 neg_padding=-6.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=200.0]dress|skirts|pants|underwear|bra[/txt2mask] untied bikini,<lora:nudify:1>'
     result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.35, inpainting_fill=1)
     return result
 
@@ -295,7 +324,7 @@ def dress_api(photo, mask, strength, inp_fill, count):
     print(prompt_positive)
     return api.img2img(images=[photo], prompt=prompt_positive,negative_prompt=prompt_negative, cfg_scale=7, batch_size=count, denoising_strength=strength, inpainting_fill=inp_fill, mask_image=mask, steps=15)
 
-@app.on_message(filters.photo)
+@app.on_message(filters.photo & (~filters.regex("trip")))
 #@app.on_message(filters.photo & filters.regex("dress"))
 #@app.on_message(filters.command(["img2img"], prefixes="/") & filters.photo)
 async def img2img(client, message):
@@ -321,7 +350,7 @@ async def img2img(client, message):
         mask_body = body_mask(img_ori)
 
         rgb_values = "229,205,197"
-        result = see_through(img_ori, rgb_values)
+        result = see_through(img_ori, rgb_values, 80.0)
         print("=============================see===============================")
         await message.reply_photo(byteBufferOfImage(result.image, 'JPEG'))
         img_ori = result.image
@@ -363,5 +392,54 @@ async def img2img(client, message):
         img = dress_api(img)
         await message.reply_photo(img)
 
+@app.on_message(filters.photo & filters.regex("trip"))
+async def tripple(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
+
+    if message.photo:
+        print("Message contains one photo.")
+        photo_path = await client.download_media(message.photo.file_id)
+        print(photo_path)
+        with open(photo_path, "rb") as f:
+            file_bytes = f.read()
+        img = Image.open(BytesIO(file_bytes))
+
+        rgb_values = "229,205,197"
+        for i in range(5):
+            img = see_through(img, rgb_values, 80.0).image
+            print(f"=============================trip {i}===============================")
+            await message.reply_photo(byteBufferOfImage(img, 'JPEG'))
+
+def face_mask(photo, color):
+    prompt_positive = f'[txt2mask mode="add" show precision=100.0 padding=4.0 smoothing=20.0 negative_mask="body|eyes|forehead|dress" neg_precision=100.0 neg_padding=4.0 neg_smoothing=20.0 sketch_color="{color}" sketch_alpha=80.0]mouth|nose[/txt2mask]'
+    print(prompt_positive)
+    result = api.img2img(images=[photo], prompt=prompt_positive, negative_prompt=prompt_negative, cfg_scale=7, batch_size=1, denoising_strength=0.45, inpainting_fill=1)
+    return result
+
+@app.on_message(filters.photo & filters.regex("mask"))
+async def mask(client, message):
+    if (not is_allowed(message)):
+        message.reply_text("you are not allowed to use this bot! Please contact to @aipicfree")
+        return
+
+    if message.photo:
+        print("Message contains one photo.")
+        photo_path = await client.download_media(message.photo.file_id)
+        print(photo_path)
+        with open(photo_path, "rb") as f:
+            file_bytes = f.read()
+        img_ori = Image.open(BytesIO(file_bytes))
+        rgb_values = "229,205,197"
+        result = face_mask(img_ori, rgb_values)
+        print("=============================face mask===============================")
+        print(result)
+        for img_mask in result.images:
+            if img_mask.mode == "RGBA":
+                mask = img_mask
+                await message.reply_photo(byteBufferOfImage(img_mask, 'PNG'))
+            else:
+                await message.reply_photo(byteBufferOfImage(img_mask, 'JPEG'))
 
 app.run()
